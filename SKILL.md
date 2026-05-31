@@ -14,6 +14,7 @@ Use this for a portable lightweight video pipeline:
 3. Render vertical `1080x1920` frames with the bundled TikTok-safe blue template.
 4. Synthesize narration with local Edge TTS.
 5. Compose scene clips and final MP4 with the bundled Python script and ffmpeg.
+6. Add lightweight default background music unless the user disables it.
 
 This skill is intended for Codex. The video composer is portable Python, but image creation relies on Codex `imagegen`; non-Codex users must provide their own images.
 
@@ -118,6 +119,7 @@ Optional:
 - `--speed 0.95`
 - `--bgm /path/to/bgm.mp3`
 - `--bgm-volume 0.07`
+- `--no-bgm`
 
 ## Verification
 

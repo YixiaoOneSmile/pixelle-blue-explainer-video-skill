@@ -201,6 +201,36 @@ def add_bgm(input_video: Path, bgm: Path, output: Path, volume: float) -> None:
     )
 
 
+def make_default_bgm(output: Path, duration: float) -> None:
+    fade_out_start = max(0.0, duration - 1.2)
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"sine=frequency=220:duration={duration:.3f}:sample_rate=44100",
+            "-f",
+            "lavfi",
+            "-i",
+            f"sine=frequency=330:duration={duration:.3f}:sample_rate=44100",
+            "-filter_complex",
+            (
+                "[0:a]volume=0.10[a0];"
+                "[1:a]volume=0.06[a1];"
+                "[a0][a1]amix=inputs=2:duration=shortest,"
+                f"afade=t=in:st=0:d=1.0,afade=t=out:st={fade_out_start:.3f}:d=1.0[a]"
+            ),
+            "-map",
+            "[a]",
+            "-c:a",
+            "mp3",
+            str(output),
+        ]
+    )
+
+
 def make_contact_sheet(frame_dir: Path, output: Path) -> None:
     frames = sorted(frame_dir.glob("frame_*.png"))
     if not frames:
@@ -236,6 +266,7 @@ async def main() -> None:
     parser.add_argument("--template", default=DEFAULT_TEMPLATE, type=Path)
     parser.add_argument("--bgm", type=Path)
     parser.add_argument("--bgm-volume", default=0.07, type=float)
+    parser.add_argument("--no-bgm", action="store_true", help="Disable the default lightweight background music")
     args = parser.parse_args()
 
     if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
@@ -273,10 +304,16 @@ async def main() -> None:
     no_bgm = args.out_dir / f"{args.name}_no_bgm.mp4"
     final = args.out_dir / f"{args.name}.mp4"
     concat_segments(segments, no_bgm)
-    if args.bgm and args.bgm.exists():
-        add_bgm(no_bgm, args.bgm, final, args.bgm_volume)
-    else:
+    if args.no_bgm:
         shutil.copyfile(no_bgm, final)
+    else:
+        bgm = args.bgm
+        if bgm is None:
+            bgm = args.out_dir / "default_bgm.mp3"
+            make_default_bgm(bgm, ffprobe_duration(no_bgm))
+        if not bgm.exists():
+            raise FileNotFoundError(f"BGM not found: {bgm}")
+        add_bgm(no_bgm, bgm, final, args.bgm_volume)
 
     contact_sheet = args.out_dir / "contact_sheet_frames.jpg"
     make_contact_sheet(frame_dir, contact_sheet)
