@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1080, height=1920">
+    <title>Blue Explainer Safe Template</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 1080px; height: 1920px; overflow: hidden; }
+        body {
+            font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif;
+            color: #fff;
+            background:
+                radial-gradient(circle at 52% 34%, rgba(23, 104, 176, .94), rgba(2, 58, 113, .98) 50%, #011b42 100%);
+            position: relative;
+        }
+        body::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+            background-size: 72px 72px;
+            opacity: .42;
+        }
+        .brand {
+            position: absolute;
+            top: 206px;
+            left: 70px;
+            right: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 3;
+        }
+        .brand-name {
+            font-size: 46px;
+            line-height: 1;
+            font-weight: 900;
+            letter-spacing: 0;
+            text-shadow: 0 5px 18px rgba(0,0,0,.35);
+        }
+        .episode {
+            font-size: 24px;
+            font-weight: 700;
+            color: rgba(255,255,255,.72);
+            letter-spacing: 1px;
+        }
+        .headline {
+            position: absolute;
+            left: 90px;
+            right: 90px;
+            top: 286px;
+            height: 80px;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 44px;
+            line-height: 1.18;
+            font-weight: 900;
+            letter-spacing: 0;
+            text-shadow: 0 5px 18px rgba(0,0,0,.45);
+        }
+        .stage {
+            position: absolute;
+            left: 100px;
+            top: 398px;
+            width: 880px;
+            height: 486px;
+            border: 4px solid rgba(255,255,255,.92);
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(2, 49, 102, .72);
+            box-shadow:
+                0 28px 60px rgba(0,0,0,.28),
+                inset 0 0 70px rgba(255,255,255,.08);
+            z-index: 2;
+        }
+        .stage img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            filter: saturate(1.04) contrast(1.05);
+        }
+        .stage::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            box-shadow: inset 0 0 90px rgba(0, 16, 43, .22);
+            pointer-events: none;
+        }
+        .caption-card {
+            position: absolute;
+            left: 100px;
+            right: 100px;
+            top: 936px;
+            min-height: 330px;
+            padding: 34px 38px 36px;
+            border-radius: 10px;
+            background: rgba(1, 20, 52, .66);
+            border: 2px solid rgba(255,255,255,.24);
+            box-shadow: 0 22px 50px rgba(0,0,0,.22);
+            z-index: 3;
+        }
+        .caption {
+            font-size: 35px;
+            line-height: 1.45;
+            font-weight: 650;
+            color: rgba(255,255,255,.96);
+            text-align: left;
+            letter-spacing: 0;
+        }
+        .rule {
+            position: absolute;
+            left: 100px;
+            right: 100px;
+            bottom: 310px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.38), transparent);
+            z-index: 3;
+        }
+        .footer {
+            position: absolute;
+            left: 100px;
+            right: 100px;
+            bottom: 216px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            z-index: 3;
+            color: rgba(255,255,255,.82);
+        }
+        .author {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+        .author-name {
+            font-size: 30px;
+            font-weight: 800;
+        }
+        .author-desc {
+            font-size: 22px;
+            line-height: 1.35;
+            color: rgba(255,255,255,.66);
+        }
+        .tag {
+            font-size: 23px;
+            font-weight: 700;
+            color: rgba(255,255,255,.70);
+        }
+    </style>
+</head>
+<body>
+    <div class="brand">
+        <div class="brand-name">{{brand}}</div>
+        <div class="episode">{{index}} / {{total}}</div>
+    </div>
+    <div class="headline">{{subtitle}}</div>
+    <div class="stage">
+        <img src="{{image_uri}}" alt="">
+    </div>
+    <div class="caption-card">
+        <div class="caption">{{caption}}</div>
+    </div>
+    <div class="rule"></div>
+    <div class="footer">
+        <div class="author">
+            <div class="author-name">{{author}}</div>
+            <div class="author-desc">{{describe}}</div>
+        </div>
+        <div class="tag">{{tag}}</div>
+    </div>
+</body>
+</html>
