@@ -13,7 +13,7 @@ Use this for a portable lightweight video pipeline:
 2. Normalize images to consistent landscape `1600x900`.
 3. Render vertical `1080x1920` frames with the bundled TikTok-safe blue template.
 4. Synthesize narration with local Edge TTS.
-5. Compose scene clips and final MP4 with the bundled Python script and ffmpeg.
+5. Trim leading/trailing TTS silence, keep a short tail pad, then compose scene clips and final MP4 with the bundled Python script and ffmpeg.
 6. Add lightweight default background music unless the user disables it.
 
 This skill is intended for Codex. The video composer is portable Python, but image creation relies on Codex `imagegen`; non-Codex users must provide their own images.
@@ -88,6 +88,7 @@ Use Edge TTS through the bundled Python script:
 - default voice: `zh-CN-YunjianNeural`
 - common female option: `zh-CN-XiaoxiaoNeural`
 - default speed: `0.95`
+- default tail pad after each narration line: `0.08s`
 - no API key is required
 - it needs network access, but does not use RunningHub or OpenAI billing
 
@@ -119,6 +120,8 @@ Optional:
 - `--speed 0.95`
 - `--bgm /path/to/bgm.mp3`
 - `--bgm-volume 0.07`
+- `--tail-pad 0.08`
+- `--silence-threshold -45dB`
 - `--no-bgm`
 
 ## Verification
@@ -144,5 +147,6 @@ View the contact sheet. Check:
 - main image and caption are readable
 - footer is not too high, but avoids bottom controls
 - no important content is cropped
+- narration does not leave long silent gaps between scenes
 
 Final response should link the MP4, the contact sheet, and any script/template changed.

@@ -44,6 +44,28 @@ def ffprobe_duration(path: Path) -> float:
     return float(out.strip())
 
 
+def ffprobe_stream_duration(path: Path, stream_type: str) -> float:
+    out = subprocess.check_output(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            stream_type[0],
+            "-show_entries",
+            "stream=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(path),
+        ],
+        text=True,
+    ).strip()
+    values = [float(line) for line in out.splitlines() if line and line != "N/A"]
+    if values:
+        return values[0]
+    return ffprobe_duration(path)
+
+
 def load_scenes(path: Path) -> list[dict]:
     scenes = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(scenes, list) or not scenes:
@@ -140,19 +162,60 @@ async def synthesize_tts(text: str, output_path: Path, voice: str, speed: float)
     await communicate.save(str(output_path))
 
 
-def make_segment(frame: Path, audio: Path, output: Path) -> None:
+def clean_audio(input_path: Path, output_path: Path, tail_pad: float, silence_threshold: str) -> None:
+    # Trim only leading/trailing TTS silence. The reverse pass avoids cutting pauses inside sentences.
+    audio_filter = (
+        f"silenceremove=start_periods=1:start_duration=0.04:start_threshold={silence_threshold}:start_silence=0.02,"
+        f"areverse,"
+        f"silenceremove=start_periods=1:start_duration=0.18:start_threshold={silence_threshold}:start_silence=0.08,"
+        f"areverse,"
+        f"apad=pad_dur={tail_pad:.3f},"
+        "aformat=sample_rates=48000:channel_layouts=mono"
+    )
     run(
         [
             "ffmpeg",
             "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(input_path),
+            "-af",
+            audio_filter,
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            str(output_path),
+        ]
+    )
+
+
+def make_segment(frame: Path, audio: Path, output: Path, duration: float, fps: int) -> None:
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
             "-loop",
             "1",
             "-i",
             str(frame),
             "-i",
             str(audio),
+            "-t",
+            f"{duration:.3f}",
+            "-r",
+            str(fps),
             "-c:v",
             "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "18",
             "-tune",
             "stillimage",
             "-c:a",
@@ -161,7 +224,8 @@ def make_segment(frame: Path, audio: Path, output: Path) -> None:
             "192k",
             "-pix_fmt",
             "yuv420p",
-            "-shortest",
+            "-movflags",
+            "+faststart",
             str(output),
         ]
     )
@@ -171,7 +235,40 @@ def concat_segments(segments: list[Path], output: Path) -> None:
     with TemporaryDirectory() as tmp:
         filelist = Path(tmp) / "filelist.txt"
         filelist.write_text("".join(f"file '{p.resolve()}'\n" for p in segments), encoding="utf-8")
-        run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(filelist), "-c", "copy", str(output)])
+        run(
+            [
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-fflags",
+                "+genpts",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                str(filelist),
+                "-c:v",
+                "libx264",
+                "-preset",
+                "medium",
+                "-crf",
+                "18",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                "-af",
+                "aresample=async=1:first_pts=0",
+                "-pix_fmt",
+                "yuv420p",
+                "-movflags",
+                "+faststart",
+                str(output),
+            ]
+        )
 
 
 def add_bgm(input_video: Path, bgm: Path, output: Path, volume: float) -> None:
@@ -179,6 +276,9 @@ def add_bgm(input_video: Path, bgm: Path, output: Path, volume: float) -> None:
         [
             "ffmpeg",
             "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
             "-i",
             str(input_video),
             "-stream_loop",
@@ -207,6 +307,9 @@ def make_default_bgm(output: Path, duration: float) -> None:
         [
             "ffmpeg",
             "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
             "-f",
             "lavfi",
             "-i",
@@ -266,6 +369,9 @@ async def main() -> None:
     parser.add_argument("--template", default=DEFAULT_TEMPLATE, type=Path)
     parser.add_argument("--bgm", type=Path)
     parser.add_argument("--bgm-volume", default=0.07, type=float)
+    parser.add_argument("--tail-pad", default=0.08, type=float, help="Seconds of silence to keep after each narration line")
+    parser.add_argument("--silence-threshold", default="-45dB", help="Threshold used to trim leading/trailing TTS silence")
+    parser.add_argument("--fps", default=25, type=int)
     parser.add_argument("--no-bgm", action="store_true", help="Disable the default lightweight background music")
     args = parser.parse_args()
 
@@ -295,10 +401,13 @@ async def main() -> None:
 
     segments = []
     for i, (scene, frame) in enumerate(zip(scenes, frames)):
-        audio_path = audio_dir / f"audio_{i:02d}.mp3"
+        raw_audio_path = audio_dir / f"audio_{i:02d}_raw.mp3"
+        audio_path = audio_dir / f"audio_{i:02d}.m4a"
         segment_path = segment_dir / f"segment_{i:02d}.mp4"
-        await synthesize_tts(scene["narration"], audio_path, args.voice, args.speed)
-        make_segment(frame, audio_path, segment_path)
+        await synthesize_tts(scene["narration"], raw_audio_path, args.voice, args.speed)
+        clean_audio(raw_audio_path, audio_path, args.tail_pad, args.silence_threshold)
+        duration = ffprobe_stream_duration(audio_path, "audio")
+        make_segment(frame, audio_path, segment_path, duration, args.fps)
         segments.append(segment_path)
 
     no_bgm = args.out_dir / f"{args.name}_no_bgm.mp4"
