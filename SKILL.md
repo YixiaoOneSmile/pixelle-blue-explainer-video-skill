@@ -14,7 +14,7 @@ Use this for a portable lightweight video pipeline:
 3. Render vertical `1080x1920` frames with the bundled TikTok-safe blue template.
 4. Synthesize narration with local Edge TTS.
 5. Trim leading/trailing TTS silence, keep a short tail pad, then compose scene clips and final MP4 with the bundled Python script and ffmpeg.
-6. Add lightweight default background music unless the user disables it.
+6. Add the bundled default background music unless the user disables it.
 
 This skill is intended for Codex. The video composer is portable Python, but image creation relies on Codex `imagegen`; non-Codex users must provide their own images.
 
@@ -32,6 +32,7 @@ If either is missing and the user has not clearly said to reuse the previous val
 This skill is self-contained for composition after images are generated:
 
 - `requirements.txt`: Python dependencies.
+- `assets/default_bgm.mp3`: bundled default BGM used when `--bgm` is not provided.
 - `assets/image_ai_blue_wide.html`: centered TikTok-safe blue template.
 - `assets/scenes.sample.json`: minimal storyboard shape.
 - `scripts/setup.sh`: creates a virtualenv and installs Python/browser dependencies.
@@ -118,7 +119,7 @@ Optional:
 
 - `--voice zh-CN-XiaoxiaoNeural`
 - `--speed 0.95`
-- `--bgm /path/to/bgm.mp3`
+- `--bgm /path/to/bgm.mp3` to override the bundled default BGM
 - `--bgm-volume 0.07`
 - `--tail-pad 0.35`
 - `--end-silence-keep 0.20`

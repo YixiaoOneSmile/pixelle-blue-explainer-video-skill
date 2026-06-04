@@ -18,6 +18,7 @@ from playwright.async_api import async_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TEMPLATE = ROOT / "assets" / "image_ai_blue_wide.html"
+DEFAULT_BGM = ROOT / "assets" / "default_bgm.mp3"
 CANVAS_SIZE = (1600, 900)
 VIDEO_SIZE = (1080, 1920)
 PAD_COLOR = (2, 50, 104)
@@ -278,6 +279,8 @@ def concat_segments(segments: list[Path], output: Path) -> None:
 
 
 def add_bgm(input_video: Path, bgm: Path, output: Path, volume: float) -> None:
+    duration = ffprobe_duration(input_video)
+    fade_out_start = max(0.0, duration - 1.2)
     run(
         [
             "ffmpeg",
@@ -292,7 +295,11 @@ def add_bgm(input_video: Path, bgm: Path, output: Path, volume: float) -> None:
             "-i",
             str(bgm),
             "-filter_complex",
-            f"[1:a]volume={volume}[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[a]",
+            (
+                f"[1:a]volume={volume},"
+                f"afade=t=out:st={fade_out_start:.3f}:d=1.0[bgm];"
+                "[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[a]"
+            ),
             "-map",
             "0:v",
             "-map",
@@ -302,39 +309,6 @@ def add_bgm(input_video: Path, bgm: Path, output: Path, volume: float) -> None:
             "-c:a",
             "aac",
             "-shortest",
-            str(output),
-        ]
-    )
-
-
-def make_default_bgm(output: Path, duration: float) -> None:
-    fade_out_start = max(0.0, duration - 1.2)
-    run(
-        [
-            "ffmpeg",
-            "-y",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            f"sine=frequency=220:duration={duration:.3f}:sample_rate=44100",
-            "-f",
-            "lavfi",
-            "-i",
-            f"sine=frequency=330:duration={duration:.3f}:sample_rate=44100",
-            "-filter_complex",
-            (
-                "[0:a]volume=0.10[a0];"
-                "[1:a]volume=0.06[a1];"
-                "[a0][a1]amix=inputs=2:duration=shortest,"
-                f"afade=t=in:st=0:d=1.0,afade=t=out:st={fade_out_start:.3f}:d=1.0[a]"
-            ),
-            "-map",
-            "[a]",
-            "-c:a",
-            "mp3",
             str(output),
         ]
     )
@@ -425,8 +399,7 @@ async def main() -> None:
     else:
         bgm = args.bgm
         if bgm is None:
-            bgm = args.out_dir / "default_bgm.mp3"
-            make_default_bgm(bgm, ffprobe_duration(no_bgm))
+            bgm = DEFAULT_BGM
         if not bgm.exists():
             raise FileNotFoundError(f"BGM not found: {bgm}")
         add_bgm(no_bgm, bgm, final, args.bgm_volume)
