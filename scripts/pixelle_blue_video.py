@@ -162,12 +162,18 @@ async def synthesize_tts(text: str, output_path: Path, voice: str, speed: float)
     await communicate.save(str(output_path))
 
 
-def clean_audio(input_path: Path, output_path: Path, tail_pad: float, silence_threshold: str) -> None:
+def clean_audio(
+    input_path: Path,
+    output_path: Path,
+    tail_pad: float,
+    silence_threshold: str,
+    end_silence_keep: float,
+) -> None:
     # Trim only leading/trailing TTS silence. The reverse pass avoids cutting pauses inside sentences.
     audio_filter = (
-        f"silenceremove=start_periods=1:start_duration=0.04:start_threshold={silence_threshold}:start_silence=0.02,"
+        f"silenceremove=start_periods=1:start_duration=0.04:start_threshold={silence_threshold}:start_silence=0.03,"
         f"areverse,"
-        f"silenceremove=start_periods=1:start_duration=0.18:start_threshold={silence_threshold}:start_silence=0.08,"
+        f"silenceremove=start_periods=1:start_duration=0.08:start_threshold={silence_threshold}:start_silence={end_silence_keep:.3f},"
         f"areverse,"
         f"apad=pad_dur={tail_pad:.3f},"
         "aformat=sample_rates=48000:channel_layouts=mono"
@@ -369,8 +375,9 @@ async def main() -> None:
     parser.add_argument("--template", default=DEFAULT_TEMPLATE, type=Path)
     parser.add_argument("--bgm", type=Path)
     parser.add_argument("--bgm-volume", default=0.07, type=float)
-    parser.add_argument("--tail-pad", default=0.08, type=float, help="Seconds of silence to keep after each narration line")
-    parser.add_argument("--silence-threshold", default="-45dB", help="Threshold used to trim leading/trailing TTS silence")
+    parser.add_argument("--tail-pad", default=0.35, type=float, help="Extra seconds of silence after each narration line")
+    parser.add_argument("--end-silence-keep", default=0.20, type=float, help="Detected trailing TTS silence to keep before tail padding")
+    parser.add_argument("--silence-threshold", default="-55dB", help="Threshold used to trim leading/trailing TTS silence")
     parser.add_argument("--fps", default=25, type=int)
     parser.add_argument("--no-bgm", action="store_true", help="Disable the default lightweight background music")
     args = parser.parse_args()
@@ -405,7 +412,7 @@ async def main() -> None:
         audio_path = audio_dir / f"audio_{i:02d}.m4a"
         segment_path = segment_dir / f"segment_{i:02d}.mp4"
         await synthesize_tts(scene["narration"], raw_audio_path, args.voice, args.speed)
-        clean_audio(raw_audio_path, audio_path, args.tail_pad, args.silence_threshold)
+        clean_audio(raw_audio_path, audio_path, args.tail_pad, args.silence_threshold, args.end_silence_keep)
         duration = ffprobe_stream_duration(audio_path, "audio")
         make_segment(frame, audio_path, segment_path, duration, args.fps)
         segments.append(segment_path)

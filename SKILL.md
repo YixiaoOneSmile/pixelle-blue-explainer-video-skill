@@ -88,7 +88,7 @@ Use Edge TTS through the bundled Python script:
 - default voice: `zh-CN-YunjianNeural`
 - common female option: `zh-CN-XiaoxiaoNeural`
 - default speed: `0.95`
-- default tail pad after each narration line: `0.08s`
+- default pause after each narration line: about `0.5s`
 - no API key is required
 - it needs network access, but does not use RunningHub or OpenAI billing
 
@@ -120,8 +120,9 @@ Optional:
 - `--speed 0.95`
 - `--bgm /path/to/bgm.mp3`
 - `--bgm-volume 0.07`
-- `--tail-pad 0.08`
-- `--silence-threshold -45dB`
+- `--tail-pad 0.35`
+- `--end-silence-keep 0.20`
+- `--silence-threshold -55dB`
 - `--no-bgm`
 
 ## Verification
@@ -147,6 +148,6 @@ View the contact sheet. Check:
 - main image and caption are readable
 - footer is not too high, but avoids bottom controls
 - no important content is cropped
-- narration does not leave long silent gaps between scenes
+- narration does not leave long silent gaps between scenes and does not clip the last syllables
 
 Final response should link the MP4, the contact sheet, and any script/template changed.
